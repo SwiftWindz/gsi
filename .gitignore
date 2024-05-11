@@ -1,0 +1,7 @@
+# Directories
+target
+# File types
+*.csv
+*.txt
+# Configs
+src/conf.toml
