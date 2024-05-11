@@ -9,8 +9,8 @@ use serde::Deserialize;
 use csv;
 
 const GITHUB_URL: &str = "git@github.com";
-const ROSTER_FILENAME: &str = "src/test.csv";
-const DIRECTORY_NAME: &str = "classroom_repos_";
+const DEFAULT_ROSTER_FILENAME: &str = "src/roster.csv";
+const DEFAULT_CONFIG_PATH: &str = "src/conf.toml";
 
 #[derive(Hash, Eq, PartialEq, Deserialize, Debug)]
 struct Student {
@@ -18,8 +18,24 @@ struct Student {
     github_username: String
 }
 
+#[derive(Deserialize, Debug)]
+struct Settings {
+    user_input: Input,
+    config_file: Config
+}
+
+#[derive(Deserialize, Debug)]
+struct TomlData {
+    config: Config,
+}
+
+#[derive(Deserialize, Debug)]
+struct Config {
+    roster_path: String
+}
+
 /// Search for a pattern in a file and display the lines that contain it.
-#[derive(Parser)]
+#[derive(Parser, Deserialize, Debug)]
 struct Input {
     /// The pattern to look for
     org: String,
@@ -39,7 +55,7 @@ fn read_roster(roster_path: &str) -> Result<HashSet<Student>, csv::Error> {
     Ok(students)
 }
 
-fn create_output_directory(org_name: &String, assignment_name: &String, output_path: &String) -> Result<(String), Box<dyn Error>> {
+fn create_output_directory(assignment_name: &String, output_path: &String) -> Result<String, Box<dyn Error>> {
     let dt = chrono::offset::Local::now();
     //   Python local_path = os.path.join(directory_path, name)
     let output_path = format!("{}//{}D{}T{}", output_path, assignment_name,
@@ -51,11 +67,10 @@ fn create_output_directory(org_name: &String, assignment_name: &String, output_p
 fn clone_repo(org_name: &String, assignment_name: &String, output_path: &String, student: Student) {
     let username = student.github_username;
     let remote_repo_url = format!("{GITHUB_URL}:{org_name}/{assignment_name}-{username}.git");
-    let mut command = Command::new("git")
-        .current_dir(output_path)
+    let mut command = Command::new("git");
+    command.current_dir(output_path)
         .args(["clone", &remote_repo_url])
         .stdout(Stdio::null());
-    command.current_dir(output_path);
     if let Ok(output) = command.output() {
         println!("Child id {:?}", output);
         return;
@@ -67,10 +82,26 @@ fn clone_repo(org_name: &String, assignment_name: &String, output_path: &String,
 }
 
 fn main() {
-    let args = Input::parse();
-    let students = read_roster(ROSTER_FILENAME).unwrap();
-    let path = create_output_directory(&args.org, &args.assignment_name, &args.location).unwrap();
+    let settings = Settings {
+        user_input: Input::parse(),
+        config_file: {
+            let conf_str = fs::read_to_string(DEFAULT_CONFIG_PATH).unwrap();
+            let toml_data: TomlData = toml::from_str(&conf_str).unwrap_or_else(|_| {
+                println!("GSI: Config file could not be read. File most likely does not exist or GSI \
+                does not have adequate permissions. Using default configuration...");
+                TomlData {
+                    config: Config {
+                        roster_path: DEFAULT_ROSTER_FILENAME.to_string()
+                    }
+                }
+            });
+            println!("{:?}", &toml_data.config);
+            toml_data.config
+        },
+    };
+    let students = read_roster(&settings.config_file.roster_path).unwrap();
+    let path = create_output_directory(&settings.user_input.assignment_name, &settings.user_input.location).unwrap();
     for student in students {
-        clone_repo(&args.org, &args.assignment_name, &path, student)
+        clone_repo(&settings.user_input.org, &settings.user_input.assignment_name, &path, student)
     }
 }
