@@ -8,40 +8,50 @@ use clap::Parser;
 use serde::Deserialize;
 use csv;
 
+// SSH URL for GitHub
 const GITHUB_URL: &str = "git@github.com";
+// Expected location of student roster if none other is specified
 const DEFAULT_ROSTER_FILENAME: &str = "src/roster.csv";
+// Expected location of config if none other is specified
 const DEFAULT_CONFIG_PATH: &str = "src/conf.toml";
 
+// Struct containing student attributes
 #[derive(Hash, Eq, PartialEq, Deserialize, Debug)]
 struct Student {
     name: String,
     github_username: String
 }
 
+// Aggregated program settings
 #[derive(Deserialize, Debug)]
 struct Settings {
+    // Settings input via the cli
     user_input: Input,
+    // Settings from toml config
     config_file: Config
 }
 
+// Struct that contains sections of data in the TOML config
 #[derive(Deserialize, Debug)]
 struct TomlData {
+    // Config section of TOML
     config: Config,
 }
 
+// Struct that contains information in Config section of TOML file
 #[derive(Deserialize, Debug)]
 struct Config {
     roster_path: String
 }
 
-/// Search for a pattern in a file and display the lines that contain it.
+//Cli args
 #[derive(Parser, Deserialize, Debug)]
 struct Input {
-    /// The pattern to look for
+    // GitHub classroom org
     org: String,
-    /// The path to the file to read
+    // GitHub classroom assignment name
     assignment_name: String,
-    // Path to desired output location
+    // Where git should clone to
     location: String
 }
 
@@ -72,6 +82,7 @@ fn clone_repo(org_name: &String, assignment_name: &String, output_path: &String,
         .args(["clone", &remote_repo_url])
         .stdout(Stdio::null());
     if let Ok(output) = command.output() {
+        //TODO make output better
         println!("Child id {:?}", output);
         return;
     }
