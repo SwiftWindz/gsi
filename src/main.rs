@@ -51,9 +51,12 @@ fn create_output_directory(org_name: &String, assignment_name: &String, output_p
 fn clone_repo(org_name: &String, assignment_name: &String, output_path: &String, student: Student) {
     let username = student.github_username;
     let remote_repo_url = format!("{GITHUB_URL}:{org_name}/{assignment_name}-{username}.git");
-    let mut command = Command::new("git");
+    let mut command = Command::new("git")
+        .current_dir(output_path)
+        .args(["clone", &remote_repo_url])
+        .stdout(Stdio::null());
     command.current_dir(output_path);
-    if let Ok(output) = command.args(["clone", &remote_repo_url]).stdout(Stdio::null()).output() {
+    if let Ok(output) = command.output() {
         println!("Child id {:?}", output);
         return;
     }
