@@ -178,6 +178,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gsi"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "csv",
+ "serde",
+]
+
+[[package]]
 name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -302,16 +312,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "snow"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap",
- "csv",
- "serde",
 ]
 
 [[package]]
