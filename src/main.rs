@@ -4,7 +4,7 @@ use std::error::Error;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::string::String;
-use clap::Parser;
+use clap::{Args, Parser, Subcommand};
 use serde::Deserialize;
 use csv;
 
@@ -14,6 +14,11 @@ const GITHUB_URL: &str = "git@github.com";
 const DEFAULT_ROSTER_FILENAME: &str = "src/roster.csv";
 // Expected location of config if none other is specified
 const DEFAULT_CONFIG_PATH: &str = "src/conf.toml";
+
+#[derive(Subcommand, Debug, Deserialize)]
+enum Commands {
+    Clone(Clone),
+}
 
 // Struct containing student attributes
 #[derive(Hash, Eq, PartialEq, Deserialize, Debug)]
@@ -44,9 +49,16 @@ struct Config {
     roster_path: String
 }
 
-//Cli args
 #[derive(Parser, Deserialize, Debug)]
+#[command(version, about, long_about = None)]
+#[command(propagate_version = true)]
 struct Input {
+    #[command(subcommand)]
+    command: Commands
+}
+
+#[derive(Args, Debug, Deserialize)]
+struct Clone {
     // GitHub classroom org
     org: String,
     // GitHub classroom assignment name
@@ -110,9 +122,13 @@ fn main() {
             toml_data.config
         },
     };
-    let students = read_roster(&settings.config_file.roster_path).unwrap();
-    let path = create_output_directory(&settings.user_input.assignment_name, &settings.user_input.location).unwrap();
-    for student in students {
-        clone_repo(&settings.user_input.org, &settings.user_input.assignment_name, &path, student)
+    match &settings.user_input.command {
+        Commands::Clone(cmd) => {
+            let students = read_roster(&settings.config_file.roster_path).unwrap();
+            let path = create_output_directory(&cmd.assignment_name, &cmd.location).unwrap();
+            for student in students {
+                clone_repo(&cmd.org, &cmd.assignment_name, &path, student)
+            }
+        }
     }
 }
