@@ -4,44 +4,66 @@ use std::error::Error;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::string::String;
-use clap::Parser;
+use clap::{Args, Parser, Subcommand};
 use serde::Deserialize;
 use csv;
 
+// SSH URL for GitHub
 const GITHUB_URL: &str = "git@github.com";
+// Expected location of student roster if none other is specified
 const DEFAULT_ROSTER_FILENAME: &str = "src/roster.csv";
+// Expected location of config if none other is specified
 const DEFAULT_CONFIG_PATH: &str = "src/conf.toml";
 
+#[derive(Subcommand, Debug, Deserialize)]
+enum Commands {
+    Clone(Clone),
+}
+
+// Struct containing student attributes
 #[derive(Hash, Eq, PartialEq, Deserialize, Debug)]
 struct Student {
     name: String,
     github_username: String
 }
 
+// Aggregated program settings
 #[derive(Deserialize, Debug)]
 struct Settings {
+    // Settings input via the cli
     user_input: Input,
+    // Settings from toml config
     config_file: Config
 }
 
+// Struct that contains sections of data in the TOML config
 #[derive(Deserialize, Debug)]
 struct TomlData {
+    // Config section of TOML
     config: Config,
 }
 
+// Struct that contains information in Config section of TOML file
 #[derive(Deserialize, Debug)]
 struct Config {
     roster_path: String
 }
 
-/// Search for a pattern in a file and display the lines that contain it.
 #[derive(Parser, Deserialize, Debug)]
+#[command(version, about, long_about = None)]
+#[command(propagate_version = true)]
 struct Input {
-    /// The pattern to look for
+    #[command(subcommand)]
+    command: Commands
+}
+
+#[derive(Args, Debug, Deserialize)]
+struct Clone {
+    // GitHub classroom org
     org: String,
-    /// The path to the file to read
+    // GitHub classroom assignment name
     assignment_name: String,
-    // Path to desired output location
+    // Where git should clone to
     location: String
 }
 
@@ -72,6 +94,7 @@ fn clone_repo(org_name: &String, assignment_name: &String, output_path: &String,
         .args(["clone", &remote_repo_url])
         .stdout(Stdio::null());
     if let Ok(output) = command.output() {
+        //TODO make output better
         println!("Child id {:?}", output);
         return;
     }
@@ -99,9 +122,13 @@ fn main() {
             toml_data.config
         },
     };
-    let students = read_roster(&settings.config_file.roster_path).unwrap();
-    let path = create_output_directory(&settings.user_input.assignment_name, &settings.user_input.location).unwrap();
-    for student in students {
-        clone_repo(&settings.user_input.org, &settings.user_input.assignment_name, &path, student)
+    match &settings.user_input.command {
+        Commands::Clone(cmd) => {
+            let students = read_roster(&settings.config_file.roster_path).unwrap();
+            let path = create_output_directory(&cmd.assignment_name, &cmd.location).unwrap();
+            for student in students {
+                clone_repo(&cmd.org, &cmd.assignment_name, &path, student)
+            }
+        }
     }
 }
